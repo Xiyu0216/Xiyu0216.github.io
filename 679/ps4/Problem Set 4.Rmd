@@ -1,0 +1,210 @@
+---
+title: "Problem Set 4"
+author: "Xiyu Hao"
+date: "2022/11/27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Political Book Recommendations
+```{r}
+library(tidyverse)
+library(tidygraph)
+library(ggraph)
+theme_set(theme_bw())
+```
+## a
+```{r}
+edges <- read_csv("https://raw.githubusercontent.com/krisrs1128/stat679_code/main/activities/week10/political-books-edges.csv", col_types = "cci")
+nodes <- read_csv("https://raw.githubusercontent.com/krisrs1128/stat679_code/main/activities/week10/political-books-nodes.csv", col_types = "ccc")
+
+```
+
+```{r}
+g <- tbl_graph(nodes = nodes, edges = edges)
+g
+```
+
+## b
+```{r}
+ggraph(g) +
+  geom_edge_link() +
+  geom_node_label(aes(label = label, col = political_ideology), size = 2)
+
+```
+
+## c
+```{r}
+ggraph(g, layout = "matrix") +
+  geom_edge_tile() +
+  coord_fixed() +
+  geom_node_text(aes(label = id), x = -1, nudge_y = 0.5) +
+  geom_node_text(aes(label = id), y = -1, nudge_x = -0.5)
+```
+
+In the node-link views, is is easy to answer two basic types of queries for graph data: Topological and attributional. In topological queries, we ask questions about how nodes are linked with one another. For example, is node A within three steps of node B? On the other hand, attributional queries are related to the attributes associated with nodes and edges. For example, which nodes (or edges) have an attribute value above X? However, if a visualization has too many edge crossings, it will be difficult for us to answer any topological queries, but it is easy to do in the adjacency matrix. For example, it is easy to see the interactions between characters in Les Miserables in the adjacency matrix.
+
+# Topics in Pride and Prejudice
+
+```{r}
+library(tidytext)
+paragraphs <- read_csv("https://uwmadison.box.com/shared/static/pz1lz301ufhbedzsj9iioee77r95xz4v.csv")
+paragraphs
+```
+
+## a
+```{r}
+paragraphs_dtm <- paragraphs %>%
+  unnest_tokens(word, text) %>%
+  filter(!(word %in% stop_words$word)) %>%
+  count(paragraph, word) %>%
+  cast_dtm(paragraph, word, n)
+```
+
+## b
+```{r}
+library(topicmodels)
+fit <- LDA(paragraphs_dtm, k = 6, control = list(seed = 479))
+fit
+```
+
+## c
+
+```{r}
+topics <- tidy(fit, matrix = "beta")
+
+top_terms <- topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>%
+  mutate(term = reorder_within(term, beta, topic))
+
+ggplot(top_terms, aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_y_reordered()
+```
+
+## d
+```{r}
+memberships <- tidy(fit, matrix = "gamma")
+memberships %>%
+  filter(topic == 2) %>%
+  arrange(-gamma)
+```
+
+The paragraph 347 is the purest representative of Topic 2.
+The first sentence is： sir william and lady lucas were speedily applied to for their consent.
+
+# Food nutrients
+
+```{r}
+nutrients <- read_csv("https://uwmadison.box.com/shared/static/nmgouzobq5367aex45pnbzgkhm7sur63.csv")
+
+```
+
+## a
+
+```{r}
+library(embed)
+library(tidymodels)
+pca_rec <- recipe(~., data = nutrients) %>%
+  step_normalize(all_numeric()) %>%
+  step_pca(all_numeric())
+
+pca_prep <- prep(pca_rec)
+```
+
+## b
+```{r}
+components <- tidy(pca_prep, 2)
+components %>%
+  filter(component %in% str_c("PC", 1:6)) %>%
+  ggplot() +
+  geom_col(aes(value, terms)) +
+  facet_wrap(component ~ .) +
+  theme(axis.text.y = element_text(size = 10))
+```
+I expect Beverages to have low values and for PC1 and PC2, and Fats and Oils to have high values and for PC1 and PC2.
+
+## c
+```{r}
+pca_df <- juice(pca_prep)
+pc2_mean <- aggregate( PC2 ~ group, pca_df, mean)
+pc2_mean[order(pc2_mean$PC2),]
+pc2_groups <- pc2_mean[order(pc2_mean$PC2),]$group
+pc2_groups
+```
+
+## d
+```{r}
+pca_df$group_ordered <- factor(pca_df$group,levels=pc2_groups)
+
+pca_df %>%
+  ggplot(aes(PC1, PC2)) +
+  facet_wrap(~group_ordered)+
+  geom_point(aes(color = group), alpha = 0.7, size = 1, show.legend = FALSE)
+```
+
+The result is basically the same as I expected in part (b).
+
+# Interactive Phylogeny
+
+## a
+xiyu0216.github.io/679/ps4/phylo.html
+
+## b
+### ii
+
+
+# Hierarchical Edge Bundling
+
+## a
+Hierarchical edge bundling allows to visualize adjacency relations between entities organized in a hierarchy. The elements are organized in several folder. Each folder is then subdivided in subfolders and so on. The object root is like a folder that contains other objects, including children, data, depth, height, parent, x and y. For example, children is an array of objects and data is an array of objects that record the node information from flare.js. 
+
+## b
+
+This line is used to draw the path from edge i to edge o. For example, if i or o is a sequence, then i.path(o) will contains more than two elements, since it will draw all the paths from i to o.
+
+## c
+
+The hierarchical relationship between any two proteins so that adjacency connection of the dataset can be drawn. 
+Also, a threshold for the co-occurence frequency may be needed. If the frequency is greater than the threshold given, two proteins will be connected together.
+
+# UMAP Image Collection
+
+## a
+```{D3}
+zoom = ƒ(t)
+zoomed = ƒ()
+mousemove = ƒ()
+reset = ƒ()
+fisheye = ƒ(point)
+
+d3fisheye = Object {
+  radial: ƒ()
+  circular: ƒ()
+}
+
+d3 = Object {
+  ......
+  mouse = ƒ(t)
+  ......
+  zoom: ƒ()
+  zoomIdentity: Wb {
+  k: 1
+  x: 0
+  y: 0
+  <prototype>: Wb {constructor: ƒ(t, n, e), scale: ƒ(t), translate: ƒ(t, n), apply: ƒ(t), applyX: ƒ(t), applyY: ƒ(t), invert: ƒ(t), invertX: ƒ(t), invertY: ƒ(t), rescaleX: ƒ(t), rescaleY: ƒ(t), toString: ƒ()}
+}
+  zoomTransform: ƒ(t)
+}
+```
+
+## b
+
+If we zoom in for detail, the graph is too big to view in its entirety. If we zoom out to see the overall structure, small details are not clear. So, the fisheye was included to allow interactive exploration of an area of interest in greater detail, while preserving the surrounding environment. 
+I think this is effective, since the fisheye distortion magnifies the local region around the mouse, while leaving the larger graph unaffected for context, and it can be difficult to observe micro and macro features simultaneously without fisheye. 
